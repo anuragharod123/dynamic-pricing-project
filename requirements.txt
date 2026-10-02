@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+boto3
+python-dotenv
+pydantic
+langchain
+langgraph
+tavily-python
+firecrawl-py
+openai
+mangum
