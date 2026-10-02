@@ -1,7 +1,10 @@
-const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL =
+    "awsgatewaylink"; // Replace with your actual API Gateway URL
 
 export async function getProducts() {
-    const response = await fetch(`${API_BASE_URL}/products`);
+    const response = await fetch(
+        `${API_BASE_URL}/products`
+    );
 
     if (!response.ok) {
         throw new Error("Failed to fetch products");
@@ -11,9 +14,12 @@ export async function getProducts() {
 }
 
 export async function runAgent() {
-    const response = await fetch(`${API_BASE_URL}/agent/run`, {
-        method: "POST"
-    });
+    const response = await fetch(
+        `${API_BASE_URL}/agent/run`,
+        {
+            method: "POST"
+        }
+    );
 
     if (!response.ok) {
         throw new Error("Failed to run agent");

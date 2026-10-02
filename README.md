@@ -4,6 +4,8 @@ An AI-powered dynamic pricing system that monitors competitor prices and automat
 
 The project uses **LangGraph** for agent orchestration, **Tavily + Firecrawl** for competitor price discovery, **OpenRouter LLMs** for structured price extraction, and **AWS DynamoDB** for product and price-history storage.
 
+The application is deployed using a serverless AWS architecture with **API Gateway, Lambda, SQS, ECR, and DynamoDB**.
+
 ---
 
 ## 🚀 Features
@@ -16,36 +18,43 @@ The project uses **LangGraph** for agent orchestration, **Tavily + Firecrawl** f
 - 💰 Automatically increase/decrease product prices
 - 🗃️ Store competitor price history in DynamoDB
 - 🔄 Process multiple products using LangGraph
+- ⚡ Asynchronous agent execution using Amazon SQS
 - 🌐 FastAPI backend
 - ⚛️ React frontend
-- ☁️ Designed for AWS deployment
+- ☁️ Serverless AWS deployment
+- 📈 Dashboard for product pricing and competitor price history
 
 ---
 
 ## 🏗️ Architecture
 
 ```text
-                    ┌─────────────────┐
-                    │  React Frontend │
-                    └────────┬────────┘
+                         React Frontend
+                              │
+                              ▼
+                        API Gateway
+                              │
+                              ▼
+                    ┌──────────────────┐
+                    │   API Lambda     │
+                    │     FastAPI      │
+                    └────────┬─────────┘
+                             │
+                       POST /agent/run
                              │
                              ▼
-                    ┌─────────────────┐
-                    │   FastAPI API   │
-                    └────────┬────────┘
+                           SQS
+                    dynamic-pricing-queue
                              │
                              ▼
-                    ┌─────────────────┐
-                    │    LangGraph    │
-                    │ Pricing Agent   │
-                    └────────┬────────┘
+                    ┌──────────────────┐
+                    │  Agent Lambda    │
+                    │    LangGraph     │
+                    └────────┬─────────┘
                              │
                 ┌────────────┴────────────┐
                 ▼                         ▼
-       ┌─────────────────┐       ┌─────────────────┐
-       │ Competitor Price│       │ Pricing Engine  │
-       │    Provider     │       │                 │
-       └────────┬────────┘       └────────┬────────┘
+       Competitor Price Provider     Pricing Engine
                 │                         │
         ┌───────┴────────┐                │
         ▼                ▼                ▼
@@ -53,11 +62,14 @@ The project uses **LangGraph** for agent orchestration, **Tavily + Firecrawl** f
         │                │                │
         └───────┬────────┘                │
                 ▼                         │
-          OpenRouter LLM                  │
+          OpenRouter LLM                 │
                 │                         │
                 └────────────┬────────────┘
                              ▼
                        Price Update
+                             │
+                             ▼
+                      Price History
 ```
 
 ---
@@ -67,13 +79,13 @@ The project uses **LangGraph** for agent orchestration, **Tavily + Firecrawl** f
 ```text
 Get Products
      ↓
-Search Amazon / Flipkart
+Search Amazon / Flipkart using Tavily
      ↓
-Select Search Result
+Take the first search result
      ↓
-Scrape Product Page
+Scrape product page using Firecrawl
      ↓
-Extract Relevant Content
+Extract relevant product content
      ↓
 LLM extracts structured price
      ↓
@@ -83,10 +95,38 @@ Compare Competitor Prices
      ↓
 Calculate Target Price
      ↓
-Update DynamoDB
+Update Product Price in DynamoDB
      ↓
-Store Price History
+Store Competitor Price History
 ```
+
+---
+
+## ⚡ Asynchronous Agent Execution
+
+The pricing agent can take longer than the API Gateway request timeout, so agent execution is decoupled using Amazon SQS.
+
+```text
+User clicks "Run Agent"
+          ↓
+POST /agent/run
+          ↓
+API Gateway
+          ↓
+API Lambda
+          ↓
+Send message to SQS
+          ↓
+Return immediately (202)
+          ↓
+SQS triggers Agent Lambda
+          ↓
+LangGraph pricing workflow
+          ↓
+DynamoDB updates
+```
+
+The dashboard immediately shows that the agent is running in the background. Product prices can then be refreshed after the agent completes.
 
 ---
 
@@ -121,6 +161,7 @@ No valid competitor price
 - FastAPI
 - LangChain
 - LangGraph
+- Pydantic
 
 ### AI / LLM
 - OpenRouter
@@ -135,13 +176,18 @@ No valid competitor price
 
 ### AWS
 - Amazon DynamoDB
-- AWS Lambda (planned)
-- Amazon API Gateway (planned)
+- AWS Lambda
+- Amazon API Gateway
+- Amazon SQS
+- Amazon ECR
+- Docker
 
 ### Frontend
 - React
 - Vite
+- JavaScript
 - CSS
+- Lucide React
 
 ---
 
@@ -172,13 +218,21 @@ dynamic-pricing-project/
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
+│   │   │   ├── Header.jsx
+│   │   │   ├── ProductCard.jsx
+│   │   │   └── Sidebar.jsx
 │   │   ├── pages/
+│   │   │   ├── Dashboard.jsx
+│   │   │   ├── Products.jsx
+│   │   │   └── PriceHistory.jsx
 │   │   ├── api.js
 │   │   ├── App.jsx
 │   │   └── App.css
 │   ├── package.json
 │   └── index.html
 │
+├── Dockerfile
+├── requirements.txt
 ├── .env
 ├── .gitignore
 └── README.md
@@ -204,9 +258,11 @@ HUGGINGFACEHUB_API_TOKEN=
 
 **Never commit `.env` or API keys to GitHub.**
 
+When running inside AWS Lambda, AWS credentials are provided by the Lambda execution role.
+
 ---
 
-## ▶️ Running the Backend
+## ▶️ Running the Backend Locally
 
 Create and activate a virtual environment:
 
@@ -240,7 +296,7 @@ http://127.0.0.1:8000
 
 ---
 
-## ▶️ Running the Frontend
+## ▶️ Running the Frontend Locally
 
 Navigate to the frontend:
 
@@ -296,7 +352,7 @@ Example:
 POST /agent/run
 ```
 
-This runs the LangGraph pricing workflow for all products.
+The endpoint places a pricing-agent job onto Amazon SQS and returns immediately with HTTP `202`.
 
 ### Get Price History
 
@@ -330,27 +386,41 @@ Action: INCREASE
 Target Price: ₹1,03,900
 ```
 
-The updated price is stored in DynamoDB and the competitor price is added to the price history.
+The updated price is stored in DynamoDB and the competitor prices are added to price history.
 
 ---
 
-## ☁️ Future Deployment
+## ☁️ AWS Deployment
 
-The application is designed to be deployed on AWS using:
+The project uses the following AWS components:
 
 ```text
-React
-  ↓
+React Frontend
+      ↓
 API Gateway
-  ↓
-AWS Lambda
-  ↓
-FastAPI + LangGraph
-  ↓
+      ↓
+Lambda
+      ↓
+SQS
+      ↓
+Lambda
+      ↓
+LangGraph Pricing Agent
+      ↓
 DynamoDB
 ```
 
-AWS EventBridge can also be used to periodically trigger the pricing agent for automated price monitoring.
+The Lambda function is packaged as a Docker image and stored in Amazon ECR.
+
+The SQS queue decouples the API request from the long-running pricing workflow, allowing the API to respond immediately while the agent continues processing in the background.
+
+---
+
+## 🔐 Security Notes
+
+- API keys and AWS credentials are stored in `.env` and excluded using `.gitignore`.
+- The API Gateway URL used by the frontend is **not a secret** and can be present in frontend source code.
+- The current personal-project deployment does not add authentication to the API endpoints. For a production deployment, API authentication/authorization and additional rate limiting should be added before exposing the write and agent-trigger endpoints publicly.
 
 ---
 
