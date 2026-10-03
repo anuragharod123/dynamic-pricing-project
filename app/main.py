@@ -131,4 +131,4 @@ def handler(event, context):
         }
 
     # API Gateway request
-    return mangum_handler(event, context)
+    return mangum_handler(event, context) 

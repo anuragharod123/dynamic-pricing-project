@@ -10,7 +10,6 @@ def get_product(product_id: str):
     response = products_table.get_item(
         Key={"product_id": product_id}
     )
-
     return response.get("Item")
 
 

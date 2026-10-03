@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "awsgatewaylink"; // Replace with your actual API Gateway URL
+    "https://b0wznwlt0c.execute-api.ap-south-1.amazonaws.com";
 
 export async function getProducts() {
     const response = await fetch(

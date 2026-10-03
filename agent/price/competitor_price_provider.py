@@ -1117,25 +1117,3 @@ Return ONLY structured JSON.
 
         return result
 
-
-# ============================================================
-# OPTIONAL MOCK PROVIDER
-# ============================================================
-
-class MockCompetitorPriceProvider(
-    CompetitorPriceProvider
-):
-
-    def get_prices(
-        self,
-        product_id: str,
-        product_name: str
-    ) -> dict:
-
-        return {
-            "product_id": product_id,
-            "amazon_price": 89999,
-            "amazon_url": "https://amazon.in/mock-product",
-            "flipkart_price": 89999,
-            "flipkart_url": "https://flipkart.com/mock-product"
-        }

@@ -16,18 +16,10 @@ def save_competitor_prices(
     response = competitor_prices_table.get_item(
         Key={"product_id": product_id}
     )
-
     existing = response.get("Item", {})
 
-    amazon_history = existing.get(
-        "amazon_price_history",
-        []
-    )
-
-    flipkart_history = existing.get(
-        "flipkart_price_history",
-        []
-    )
+    amazon_history = existing.get("amazon_price_history",[])
+    flipkart_history = existing.get("flipkart_price_history",[])
 
     timestamp = datetime.now(timezone.utc).isoformat()
 

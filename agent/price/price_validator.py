@@ -1,6 +1,5 @@
 from app.models import CompetitorPrice
 
-
 def validate_competitor_price(data: dict) -> CompetitorPrice:
 
     result = CompetitorPrice(**data)
